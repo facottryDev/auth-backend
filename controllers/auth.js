@@ -8,7 +8,7 @@ import { redisClient } from "../server.js";
 //LOGIN
 export const loginUser = async (req, res) => {
   try {
-    if (req.session.email) {
+    if (req.session.username) {
       return res.status(400).send("Already logged in!");
     }
 
@@ -31,7 +31,7 @@ export const loginUser = async (req, res) => {
     //Verify Password
     const passwordCorrect = await bcrypt.compare(password, user.password);
     if (passwordCorrect) {
-      req.session.email = user.email;
+      req.session.username = user.email;
       req.session.role = user.role;
       if (remember_me) {
         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 1 month
@@ -71,7 +71,7 @@ export const loginUser = async (req, res) => {
 
 //LOGOUT
 export const logOut = (req, res) => {
-  if(!req.session.email) {
+  if(!req.session.username) {
     return res.status(400).send("Not logged in!");
   }
 
@@ -109,7 +109,7 @@ export const sendOTP = async (req, res) => {
       return res.status(400).json("No email provided!");
     }
 
-    if (req.session.email) {
+    if (req.session.username) {
       return res.status(403).json("Already logged in");
     }
 
@@ -207,10 +207,14 @@ export const verifyOTP = async (req, res) => {
 //REGISTER
 export const registerUser = async (req, res) => {
   try {
+    if(req.session.username) {
+      return res.status(400).send("Already logged in!");
+    }
+
     const email = req.session.email;
     const { password } = req.body;
 
-    if (req.session.email) {
+    if (req.session.username) {
       return res.status(400).json("Already logged in!");
     }
 
