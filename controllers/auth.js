@@ -1,5 +1,5 @@
 import users from "../models/user.js";
-import { sendMail, removeExpiredUserSessions } from "../lib/helpers.js";
+import { sendMail, removeExpiredUserSessions, revokeUserSessions } from "../lib/helpers.js";
 import Joi from "joi";
 import bcrypt from "bcrypt";
 import otpGenerator from "otp-generator";
@@ -236,7 +236,7 @@ export const registerUser = async (req, res) => {
       "https://res.cloudinary.com/dqjkucbjn/image/upload/v1688890088/Avatars/thumbs-1688889944751_w9xb0e.svg";
 
     // Hash password & save to mongoDB
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, 12);
     const newUser = new users({
       email,
       password: hash,
@@ -249,6 +249,80 @@ export const registerUser = async (req, res) => {
     delete req.session.email;
 
     return res.status(200).json({ message: "User registered" });
+  } catch (error) {
+    if (error.details) {
+      return res
+        .status(422)
+        .json(error.details.map((detail) => detail.message).join(", "));
+    }
+
+    return res.status(500).json(error.message);
+  }
+};
+
+//RESET PASSWORD
+export const resetPassword = async (req, res) => {
+  try {
+    let id = null;
+    if (req.session.username) {
+      id = req.session.username;
+    } else {
+      id = req.session.email;
+    }
+
+    if (
+      (!id && !req.session.tempSessionExp) ||
+      Date.now() > req.session.tempSessionExp
+    ) {
+      return res.status(401).send("Session Expired!");
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await users.findOne(
+      { $or: [{ email: id }] },
+      { password: 1, email: 1 }
+    );
+
+    // Same Password Check
+    if (newPassword === currentPassword) {
+      return res.status(400).send("Old & new password cannot be same");
+    }
+
+    if (!user) {
+      return res.status(404).send("Not registered!");
+    }
+
+    // Match Current Password
+    if (currentPassword) {
+      const passwordCorrect = await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
+
+      if (!passwordCorrect) {
+        return res.status(400).send("Current Password doesn't match");
+      }
+    }
+
+    //newPassword Validation
+    const passwordSchema = Joi.object({
+      password: Joi.string().required(),
+    });
+
+    await passwordSchema.validateAsync({ password: newPassword });
+
+    // Save new password to mongoDB
+    const newHash = await bcrypt.hash(newPassword, 12);
+    user.password = newHash;
+    await user.save();
+
+    // Revoke all active user sessions
+    revokeUserSessions(user.email);
+    if (req.session.email) delete req.session.email;
+    delete req.session.req.session.tempSessionExp;
+
+    return res.json("Password Reset Successful!");
   } catch (error) {
     if (error.details) {
       return res
