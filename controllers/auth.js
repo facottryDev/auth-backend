@@ -1,5 +1,9 @@
 import users from "../models/user.js";
-import { sendMail, removeExpiredUserSessions, revokeUserSessions } from "../lib/helpers.js";
+import {
+  sendMail,
+  removeExpiredUserSessions,
+  revokeUserSessions,
+} from "../lib/helpers.js";
 import Joi from "joi";
 import bcrypt from "bcrypt";
 import otpGenerator from "otp-generator";
@@ -71,7 +75,7 @@ export const loginUser = async (req, res) => {
 
 //LOGOUT
 export const logOut = (req, res) => {
-  if(!req.session.username) {
+  if (!req.session.username) {
     return res.status(400).send("Not logged in!");
   }
 
@@ -207,16 +211,12 @@ export const verifyOTP = async (req, res) => {
 //REGISTER
 export const registerUser = async (req, res) => {
   try {
-    if(req.session.username) {
+    if (req.session.username) {
       return res.status(400).send("Already logged in!");
     }
 
     const email = req.session.email;
     const { password } = req.body;
-
-    if (req.session.username) {
-      return res.status(400).json("Already logged in!");
-    }
 
     if (
       !req.session.tempSessionExp ||
@@ -227,7 +227,6 @@ export const registerUser = async (req, res) => {
 
     //Request Body Validation
     const registerSchema = Joi.object({
-      email: Joi.string().email().required(),
       password: Joi.string().required(),
     });
     await registerSchema.validateAsync(req.body);
@@ -260,23 +259,60 @@ export const registerUser = async (req, res) => {
   }
 };
 
-//RESET PASSWORD
-export const resetPassword = async (req, res) => {
+//FORGOT PASSWORD
+export const forgotPassword = async (req, res) => {
   try {
-    let id = null;
     if (req.session.username) {
-      id = req.session.username;
-    } else {
-      id = req.session.email;
+      return res.status(400).send("Already logged in!");
     }
 
+    const email = req.session.email;
+    const { password } = req.body;
+
     if (
-      (!id && !req.session.tempSessionExp) ||
+      !req.session.tempSessionExp ||
       Date.now() > req.session.tempSessionExp
     ) {
       return res.status(401).send("Session Expired!");
     }
 
+    //Request Body Validation
+    const registerSchema = Joi.object({
+      password: Joi.string().required(),
+    });
+    await registerSchema.validateAsync(req.body);
+
+    // Hash password & save to mongoDB
+    const hash = await bcrypt.hash(password, 12);
+    await users.findOneAndUpdate(
+      { email },
+      { $set: { password: hash } },
+      { new: true }
+    );
+
+    delete req.session.tempSessionExp;
+    delete req.session.email;
+
+    return res.status(200).json({ message: "Password updated" });
+  } catch (error) {
+    if (error.details) {
+      return res
+        .status(422)
+        .json(error.details.map((detail) => detail.message).join(", "));
+    }
+
+    return res.status(500).json(error.message);
+  }
+};
+
+//RESET PASSWORD (LOGGED IN)
+export const resetPassword = async (req, res) => {
+  try {
+    if (!req.session.username) {
+      return res.status(400).send("Not logged in!");
+    }
+
+    let id = req.session.username;
     const { currentPassword, newPassword } = req.body;
 
     const user = await users.findOne(
@@ -303,13 +339,14 @@ export const resetPassword = async (req, res) => {
       if (!passwordCorrect) {
         return res.status(400).send("Current Password doesn't match");
       }
+    } else {
+      return res.status(400).send("Current Password is required");
     }
 
     //newPassword Validation
     const passwordSchema = Joi.object({
       password: Joi.string().required(),
     });
-
     await passwordSchema.validateAsync({ password: newPassword });
 
     // Save new password to mongoDB
