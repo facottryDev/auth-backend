@@ -29,7 +29,7 @@ const corsOptions = {
   origin:
     process.env.NODE_ENV === "production"
       ? [
-          "https://facottry-website.vercel.app", 
+          "https://website-gf5k.vercel.app", 
         ]
       : "http://localhost:3000",
   credentials: true,
