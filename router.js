@@ -4,17 +4,17 @@ import { Router } from "express";
 const router = Router();
 
 //AUTH
-router.post("/login", loginUser);
-router.get("/logout", logOut);
-router.post("/is-registered", isRegistered);
-router.post("/send-otp", sendOTP);
-router.post("/verify-otp", verifyOTP);
-router.post("/register", registerUser);
-router.post("/forgot", forgotPassword);
-router.post("/reset", resetPassword);
+router.post("/auth/login", loginUser);
+router.get("/auth/logout", logOut);
+router.post("/auth/is-registered", isRegistered);
+router.post("/auth/send-otp", sendOTP);
+router.post("/auth/verify-otp", verifyOTP);
+router.post("/auth/register", registerUser);
+router.post("/auth/forgot", forgotPassword);
+router.post("/auth/reset", resetPassword);
 
 //USER
-router.get("/", isAuth, (req, res) => {
+router.get("/auth", isAuth, (req, res) => {
     return res.status(200).send("AUTHORIZED");
   });
 
