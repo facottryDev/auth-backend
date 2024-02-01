@@ -14,7 +14,7 @@ router.post("/auth/forgot", forgotPassword);
 router.post("/auth/reset", resetPassword);
 
 //USER
-router.get("/auth", isAuth, (req, res) => {
+router.get("/", isAuth, (req, res) => {
     return res.status(200).send("AUTHORIZED");
   });
 
