@@ -1,4 +1,13 @@
-import { registerUser, loginUser, sendOTP, verifyOTP, isRegistered, logOut, resetPassword, forgotPassword } from "./controllers/auth.js";
+import {
+  registerUser,
+  loginUser,
+  sendOTP,
+  verifyOTP,
+  isRegistered,
+  logOut,
+  resetPassword,
+  forgotPassword,
+} from "./controllers/auth.js";
 import { isAuth } from "./lib/middlewares.js";
 import { Router } from "express";
 const router = Router();
@@ -15,7 +24,7 @@ router.post("/reset", resetPassword);
 
 //USER
 router.get("/", isAuth, (req, res) => {
-    return res.status(200).send("AUTHORIZED");
-  });
+  return res.status(200).json({ username: req.session.username });
+});
 
 export default router;
