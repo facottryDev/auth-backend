@@ -370,3 +370,42 @@ export const resetPassword = async (req, res) => {
     return res.status(500).json(error.message);
   }
 };
+
+// FETCH USER DETAILS
+export const fetchUserDetails = async (req, res) => {
+  try {
+    const user = await users.findOne(
+      { email: req.session.username },
+      { _id: 0, password: 0 }
+    );
+
+    if (user) {
+      return res.status(200).json(user);
+    } else {
+      return res.status(404).send("User not found");
+    }
+  } catch (error) {
+    return res.status(500).json(error.message);
+  }
+};
+
+export const updateUserDetails = async (req, res) => {
+  try {
+    const { name, mobile, profilePic, address } = req.body;
+    const email = req.session.username;
+
+    const updatedUser = await users.findOneAndUpdate(
+      { email },
+      { $set: { name, mobile, profilePic, address} },
+      { new: true }
+    );
+
+    if (updatedUser) {
+      return res.status(200).json("User details updated");
+    } else {
+      return res.status(500).send("Error updating user details");
+    }
+  } catch (error) {
+    return res.status(500).json(error.message);
+  }
+}
